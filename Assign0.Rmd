@@ -1,0 +1,98 @@
+---
+title: "Assignment0"
+author: "Rui"
+date: "2022/1/25"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+## Including Plots
+
+Question 1
+
+```{r}
+X <- c(31:45)
+X
+summary(X)
+hist(X)
+```
+```{r}
+A <- matrix(X,5,3,byrow = TRUE)
+A
+temp <- matrix(1,2,3)
+temp
+B <- rbind(A,temp)
+B
+colMeans(B)
+```
+
+```{r}
+df <- read.csv('Men 100M.csv')
+df[,6] <- as.numeric(df[,6])
+head(df)
+str(df)
+race_time <- subset(df,select = c('Medal','Time'))
+summary(race_time)
+```
+
+```{r}
+library(dplyr)
+race_time_B <- select(filter(race_time,Medal=='B'),c('Time'))
+race_time_G <- select(filter(race_time,Medal=='G'),c('Time'))
+race_time_S <- select(filter(race_time,Medal=='S'),c('Time'))
+boxplot(race_time_B[,1],race_time_G[,1],race_time_S[,1],
+        names=c("Medal B","Medal G","Medal S"))
+
+```
+```{r}
+time_mean <- aggregate(race_time$Time, by = list(race_time$Medal), FUN = mean, na.rm = T)
+time_mean
+```
+```{r}
+library(radiant)
+# Average running time
+result = pivotr(df, # Data frame
+    cvars = c( "Medal","Country"), 
+    nvar = "Time", # Numerical variable
+    fun = "mean",)
+summary(result)
+```
+
+
+```{r}
+#  Number of medals
+result2 = pivotr(df, # Data frame
+    cvars = c( "Medal","Country"), 
+)
+summary(result2)
+```
+
+```{r}
+GoldMedaltime <- subset(df, Medal =='G')
+fit = lm(Time ~ Year, GoldMedaltime)
+summary(fit)
+```
+```{r}
+predict_year = data.frame(Year = 2024)
+predict(fit, predict_year)
+```
+```{r}
+GoldMedaltime$year2 = GoldMedaltime$Year^2
+fit2 = lm(Time ~ Year+year2, GoldMedaltime)
+summary(fit2)
+
+```
+
+

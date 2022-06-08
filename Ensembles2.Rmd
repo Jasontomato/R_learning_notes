@@ -1,0 +1,94 @@
+---
+title: "Ensembles"
+author: "Kislaya Prasad"
+date: "Wednesday, October 21, 2015"
+output: word_document
+---
+
+
+
+```{r}
+setwd('D://R data')
+Beer.Preferences<- read.csv("Beer Preferences.csv")
+Beer.Preferences$Income <- as.numeric(sub('$','',as.character(Beer.Preferences$Income),fixed=TRUE))
+Beer.Preferences$Inc <- NULL
+#
+library(tree)
+set.seed(1)
+train = sample(nrow(Beer.Preferences), nrow(Beer.Preferences)*0.5)
+tree.beer=tree(Preference~.,Beer.Preferences,subset=train)
+#
+# For comparison
+cv.beer=cv.tree(tree.beer)
+plot(cv.beer$size,cv.beer$dev,type='b')
+prune.beer=prune.tree(tree.beer,best=3)
+plot(prune.beer)
+text(prune.beer,pretty=0)
+yhat=predict(prune.beer,newdata=Beer.Preferences[-train,])
+predicted.probability <- yhat[,1]
+## Generate class predictions using cutoff value
+cutoff <- 0.5
+Predicted <- ifelse(predicted.probability > cutoff, "Light", "Regular")
+beer.test=Beer.Preferences[-train,"Preference"]
+(c = table(beer.test,Predicted))
+(acc = (c[1,1]+c[2,2])/sum(c))
+# Bagging and Random Forests
+
+library(randomForest)
+
+#
+# We first do bagging (which is just RF with m = p)
+set.seed(1)
+bag.beer=randomForest(Preference~.,data=Beer.Preferences,subset=train,mtry=4,importance=TRUE)
+bag.beer
+yhat.bag = predict(bag.beer,newdata=Beer.Preferences[-train,])
+beer.test=Beer.Preferences[-train,"Preference"]
+(c = table(beer.test,yhat.bag))
+(acc = (c[1,1]+c[2,2])/sum(c))
+importance(bag.beer)
+varImpPlot(bag.beer)
+#
+# Now RF with m = 2
+set.seed(1)
+bag.beer=randomForest(Preference~.,data=Beer.Preferences,subset=train,mtry=2,importance=TRUE)
+bag.beer
+yhat.bag = predict(bag.beer,newdata=Beer.Preferences[-train,])
+beer.test=Beer.Preferences[-train,"Preference"]
+(c = table(beer.test,yhat.bag))
+(acc = (c[1,1]+c[2,2])/sum(c))
+importance(bag.beer)
+varImpPlot(bag.beer)
+
+
+# Boosting
+
+library(gbm)
+set.seed(1)
+Beer.Preferences$Preference <- ifelse(Beer.Preferences$Preference=="Light",1,0)
+boost.beer=gbm(Preference~.,data=Beer.Preferences[train,],distribution="bernoulli",n.trees=5000,interaction.depth=4)
+summary(boost.beer)
+par(mfrow=c(1,2))
+plot(boost.beer,i="Age")
+plot(boost.beer,i="Income")
+yhat.boost=predict(boost.beer,newdata=Beer.Preferences[-train,],n.trees=5000,type="response")
+predicted <- ifelse(yhat.boost>=0.5,1,0)
+yhat.test=Beer.Preferences$Preference[-train]
+(c = table(predicted,yhat.test))
+(acc = (c[1,1]+c[2,2])/sum(c))
+
+# XGB
+library(xgboost)
+traindata <- Beer.Preferences[train,]
+testdata <-  Beer.Preferences[-train,]
+label=traindata$Preference
+databeer = as.matrix(traindata[,1:4])
+bst <- xgboost(data = databeer, label = label, max.depth = 2, eta = 1, nround = 5, objective = "binary:logistic")
+
+labelT=testdata$Preference
+databeerT = as.matrix(testdata[,1:4])
+pred <- predict(bst, databeerT)
+predicted <- ifelse(pred>0.5,1,0)
+(c = table(labelT,predicted))
+(acc = (c[1,1]+c[2,2])/sum(c))
+```
+

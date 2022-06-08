@@ -1,0 +1,81 @@
+---
+title: "Clustering"
+author: "Kislaya Prasad"
+date: "Monday, April 06, 2015"
+output: word_document
+---
+
+# K-Means Clustering
+# 
+# Class Slides
+```{r}
+library(factoextra)
+set.seed(2)
+x = matrix(rnorm(50*2),ncol=2)
+x[1:25,1]=x[1:25,1]+3
+x[1:25,2]=x[1:25,2]-4
+plot(x)
+XD = data.frame(x)
+#
+km.out=kmeans(x,2,nstart=20)
+km.out
+plot(x,col=(km.out$cluster+1),main="K-Means Clustering Results with K=2",xlab="", ylab="", pch=20,cex=2)
+#
+# Illustration of kmeans output
+# Visualize k-means clusters
+fviz_cluster(km.out, data = XD, geom = "point", stand = FALSE, ellipse.type = "norm")
+#
+set.seed(4)
+km.out=kmeans(x,3,nstart=20)
+km.out
+plot(x,col=(km.out$cluster+1),main="K-Means Clustering Results with K=3",xlab="", ylab="", pch=20,cex=2)
+# Illustration of kmeans output
+# Visualize k-means clusters
+mydata <- XD
+wss <- (nrow(mydata)-1)*sum(apply(mydata,2,var))
+  for (i in 2:15) wss[i] <- sum(kmeans(mydata,
+                                       centers=i)$withinss)
+plot(1:15, wss, type="b", xlab="Number of Clusters",
+     ylab="Within groups sum of squares")
+#
+# Alternatively
+fviz_nbclust(XD, kmeans, method = "wss")
+#
+```
+
+# Wines data set
+```{r}
+setwd("D:\\R data")
+df <- read.csv("D:\\R data\\Wine.csv")
+dfsc <- scale(df[,-1])
+set.seed(12345)
+km.out=kmeans(dfsc,8,nstart=20)
+km.out
+d = dist(km.out$centers,diag=T, upper=T)
+x = as.matrix(d, 8, 8)
+heatmap(x, Rowv=NA, Colv="Rowv", scale='none')
+df$Cluster <- km.out$cluster
+table(df$Type,df$Cluster)
+# Alternatively
+fviz_nbclust(dfsc, kmeans, method = "wss")
+#
+set.seed(12345)
+km.out=kmeans(dfsc,3,nstart=20)
+km.out
+df$Cluster <- km.out$cluster
+table(df$Type,df$Cluster)
+#
+# It is sometimes useful 
+df[,1] <- NULL
+X <- matrix(0L, 3,13)
+for (i in 1:13){X[,i]= by(df[,i],df[,14],mean)}
+X <- data.frame(X)
+colnames(X) <- colnames(df[,1:13])
+X$Cluster = 1:3
+heatmap(as.matrix(X[,-14]), Rowv=NA, Colv="Rowv", scale='column')
+```
+
+
+
+
+

@@ -1,0 +1,219 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+----------------------------------------
+title: BUDT758D Assignment 2: R Charts
+output: html_document or pdf_document
+-----------------------------------------
+
+## BUDT758D Assignment 2:	R Charts
+## Points:	60
+### Submission Deadline:	Tuesday March 8, 2022 at 11:55pm
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+knitr::opts_chunk$set(echo = TRUE)
+setwd('G:\\我的云端硬盘\\Graduate course\\R dataset')
+#Remember to set working directory before loading the csv file.
+umd_data = read.csv('UMDBasketball2020.csv')
+```
+```{r}
+
+
+```
+
+### Overview
+An important element of data-driven decisions is the ability to visually communicate your data and interpretations. As 鈥渂ig data鈥? and data analysis become more important yet more complex, it is even more important to understand the basic principles of data visualization. 
+
+### Purpose
+This assignment aligns with the second course objective: create visualizations using R. 
+
+### Dataset and Submission Instructions
+The dataset UMDBasketball2020.csv contains information of Maryland Terrapins school history from 1923 to 2019. The data was originally scraped from Sports-Reference.com.  In this assignment, we will use this data set to study the team overall wins and coaches performance. A data dictionary can be found at the end of word document.
+
+### Visualization Guidelines
+Make sure to change the axis titles, chart titles, colors, size, font, legend locations etc. if needed. Categories should be in a meaningful order, if appropriate. Also, format the grid lines and data series appropriately to enhance the clarity of the graph. Remember to write an informative title with some insights. Note that the outcome variable is typically on the y-axis (vertical axis).
+
+You must turn in a well-formatted HTML or PDF output file. To do so, please click on the Knit button at the top with the wool ball icon, then choose to kint to HTML/PDF.
+
+### Q1. Explore the distribution of overall wins. (10 points)
+a)	Create a boxplot that examines the distribution of overall wins. (2 points)
+
+b)	Add points of overall wins using the geom_jitter function. (2 points)
+
+c)	Add a general title to your chart such as Boxplot of overall wins, add a text box to describe your main finding in the chart using the annotate function. (3 points)
+
+d)	Improve your chart to make it clear and ready for presenting to your readers. (3 points)
+
+(You only need to present a single chart with all the required information mentioned above)
+
+```{r}
+box_win <- umd_data%>%
+          ggplot(aes(x= "",y=OverallWins)) +
+          geom_boxplot()
+
+box_win2 <- box_win +
+          geom_jitter( width = 0.05, height = 0,color="grey80") 
+
+box_win3 <-box_win2+
+          labs(title="Overall wins distribution",
+          x="", y="Box plot of Overall wins")+
+          annotate("text", x =1.3, y = 25, label = "Overall wins normal distributed")
+
+box_win4<- box_win3+
+        theme_minimal() +
+        theme(axis.ticks = element_blank(), # remove ticks
+        axis.title.x = element_text(face="bold",margin = margin(t = 10)), # x-axis title is too close to axis ticks labels.
+        plot.caption = element_text(face="italic"),
+        plot.title = element_text(size=12),
+        panel.grid.minor = element_blank())
+  
+box_win4
+```
+
+### Q2. Explore the correlations between numeric variables. (10 points)
+a)	Create a correlations heat map for the following variables: OverallWins, ConferenceWins, SRS, SOS, PTS, and Opponents PTS. (3 points) 
+
+b)	Improve your chart to make it clear and ready for presenting to your readers. (5 points)
+
+```{r}
+pair_data <- umd_data %>%
+  select(OverallWins, ConferenceWins, SRS, SOS, PTS,Opponents.PTS)
+pair_data <- na.omit(pair_data)
+cormat <- round(cor(pair_data),2)
+library(reshape2)
+melted_cormat <- melt(cormat)
+
+
+pir_map <-  melted_cormat%>%
+  ggplot(aes(x=Var1, y=Var2, fill=value))+
+  geom_tile()+
+  labs(title="Heatmap of six numeric variables",
+          x="", y="")+
+scale_fill_gradient(low="white", high="blue")+
+  geom_text(aes(label=value), size=6)
+
+pir_map
+
+
+
+
+```
+```{r}
+names(pair_data)
+```
+
+c)	Which variables are positively correlated with overall wins? Which variable is most correlated with overall wins?  (2 points)
+
+    #### Answer here: ConferenceWins,SRS,SOS,PTS are positively correlated with overall wins.
+                      SRS is most correlated with overall wins.
+
+### Q3. Explore the relationship between overall wins and conference wins. (12 points)
+a)	Create a scatter plot of the overall wins and conference wins; use different colors or shapes to denote difference conferences (ACC, Big Ten and Southern). (3 points)
+
+b)	Add a single trend line to the chart. Hint: the mapping of color or shape needs to be created in the geom function instead of ggplot. (3 points)
+
+c)	Improve your chart to make it clear and ready for presenting to your readers. (3 points)
+
+```{r}
+scatter_map <- umd_data %>%
+  select(OverallWins, ConferenceWins,Conf) %>%
+  ggplot(aes(x= ConferenceWins,y=OverallWins))+
+  geom_point(aes(color= Conf))+
+  geom_smooth(method="lm", se=FALSE)+
+  theme_classic() +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Scatter plot of Overall wins and conferences wins",
+          x="ConferenceWins", y="OverallWins")
+
+scatter_map
+```
+
+d)	What pattern do you notice? (3 points)
+
+    ### Answer here: There is a linear trend between conference and overall wins. The more conferences wins would be expected to have more overall wins, no matter which conf it belongs to.
+                      
+
+### Q4. Explore the change of overall wins over years. (10 points)
+a)	Create a line chart for the time series of overall wins. (2 points)
+
+b)	Highlight the point with the highest wins (Hint: you could use the geom_point function); add a data label above the point to show the value. (3 points)
+
+c)	Add a vertical line at x = 2010. (2 points)
+
+d)	Improve your chart to make it clear and ready for presenting to your readers. (3 points)
+
+```{r}
+umd_data$Year_date <- as.Date(as.character(umd_data$Year),format = '%Y')
+highlight_point <- umd_data %>%
+  filter(OverallWins ==max(umd_data$OverallWins))
+
+line_chart <- umd_data%>%
+  ggplot(aes(x=Year_date,y=OverallWins))+
+  geom_line(col='gold', lwd=1.3 , alpha=0.8)+
+  geom_point(data=highlight_point, 
+             aes(x=Year_date,y=OverallWins), 
+             color='red',
+             size=3)+
+  labs(title="Timeseries of Overallwins",
+          x="Date", y="Overall wins")+
+  geom_vline(xintercept = as.Date('2010','%Y'),colour="green",linetype = "longdash")+
+  annotate("text", x = highlight_point$Year_date, y =highlight_point$OverallWins+2 , hjust=0,           size=3,label ='32')+
+   theme_classic() +
+   theme(axis.title.x = element_text(face="bold"),
+         axis.title.y = element_text(face="bold"),
+         axis.text = element_text(face="bold",size=10)
+         )
+line_chart
+
+
+```
+
+### Q5. Explore the number of seasons that each coach makes it to the NCAA tournament and the number of seasons he/she does not. (15 points)
+(a)	Create a stacked bar chart to show the number of seasons that each coach makes it to the NCAA tournament and the number of seasons he/she does not. Hint: create a new variable NCAA that indicates if the variable NCAA Tournament is NA or not. (4 points)
+
+(b)	Order the coaches based on their first year of serving as the coach at UMD. Hint: group by coach and then create a new variable first_year which is the minimum of the Year variable. Reorder Coach based on this variable. Then, group by Coach and NCAA and calculate the number of seasons within each group. (4 points)
+
+(c)	Improve your chart to make it clear and ready for presenting to your readers. (4 points)
+
+
+```{r}
+stacked_data2 <- umd_data %>%
+  mutate(NCAA = ifelse(NCAA.Tournament =="",'No','Yes'))%>%
+  group_by(Coach,NCAA)%>%
+  summarise(NCAA_count = n(), first_y = min(Year_date))
+stacked_data2
+
+stacked_chart <- stacked_data2%>%
+  ggplot(aes(x= fct_reorder(Coach, desc(first_y)),y= NCAA_count))+
+  geom_col(aes(fill=NCAA),width=0.6)+
+  labs(y = "Number of seasons",
+       x = "",
+       caption = "Source: UMD basketball",
+       title = "How many seasons each coach leads") +
+  theme_minimal() +
+  theme(axis.title.x = element_text(face="bold"), # x-axis title is too close to axis ticks labels.
+        axis.text.x=element_text(angle=-45),
+        axis.text = element_text(face="bold",size=10),
+        legend.position="bottom",
+        legend.margin = margin(t=-15),
+        plot.caption = element_text(face="italic"),
+        plot.title = element_text(size=14),
+        panel.grid.minor = element_blank(), # remove minor grid lines
+        panel.grid.major.y = element_line(color="grey70"),
+        panel.grid.major.x = element_blank()) +
+  scale_fill_manual(values = c("#DADAEB", "#9E9AC8"))
+
+
+stacked_chart
+```
+
+(d)	Which coach is the best in terms of the number of seasons that he/she makes it to the NCAA? (3 points)
+
+    #### Answer here: Gary Williams is the best coach in terms of number of seasons.
+
+### Quality of code (3 points)
+Your code needs to be clean, clear, and easy to follow.

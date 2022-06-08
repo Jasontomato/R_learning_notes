@@ -1,0 +1,80 @@
+---
+title: "Text-Cluster"
+author: "Kislaya Prasad"
+date: "April 25, 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tm)
+scores <- readRDS("scores.rds")
+american_airline <- subset(scores,scores$airline=="American")
+textvector <- as.vector(american_airline$text);
+textsource <- VectorSource(textvector);
+traincorpus <- Corpus(textsource);
+traincorpus <- tm_map(traincorpus,content_transformer(stripWhitespace));
+traincorpus <- tm_map(traincorpus,content_transformer(tolower));
+myStopwords <- c(stopwords('english'), "amp", "just", "american", "airlines", 
+                 "americanair","flight")
+# remove "" and "" from stopwords
+# myStopwords <- setdiff(myStopwords, c("amp", "just"))
+traincorpus <- tm_map(traincorpus, content_transformer(removeWords),myStopwords);
+traincorpus <- tm_map(traincorpus,content_transformer(removePunctuation));
+traincorpus <- tm_map(traincorpus,content_transformer(removeNumbers));
+removeNumPunct <- function(x) gsub("[^[:alpha:][:space:]]*", "", x)
+traincorpus <- tm_map(traincorpus, content_transformer(removeNumPunct))
+# 
+# remove URLs
+removeURL <- function(x) gsub("http[[:alnum:]]*", "", x)
+traincorpus <- tm_map(traincorpus, content_transformer(removeURL))
+#  
+# +-----------------------------------------------------------------------+
+# CREATE TERM DOCUMENT MATRIX
+tdm = TermDocumentMatrix(traincorpus)
+#
+# Save for further use
+# m <- inspect(tdm)
+# DF <- as.data.frame(m, stringsAsFactors = FALSE)
+# write.table(DF)
+#
+tdm = removeSparseTerms(tdm, 0.975)
+dim(tdm)
+# 
+(freq.terms <- findFreqTerms(tdm, lowfreq = 15))
+term.freq <- rowSums(as.matrix(tdm))
+term.freq <- subset(term.freq, term.freq >= 15)
+df2 <- data.frame(term = names(term.freq), freq = term.freq)
+library(ggplot2)
+ggplot(df2, aes(x = term, y = freq)) + geom_bar(stat = "identity") +
+  xlab("Terms") + ylab("Count") + coord_flip()
+#
+## hclust ####
+matrix1 <- as.matrix(tdm)
+distMatrix <- dist(scale(matrix1))
+fit <- hclust(distMatrix, method="ward.D2")
+
+# plot dendrogram ####
+plot(fit, cex=0.9, hang=-1,
+     main="Word Cluster Dendrogram")
+# cut tree
+rect.hclust(fit, k=5)
+(groups <- cutree(fit, k=5))
+#
+XT = t(matrix1)
+XD = data.frame(XT)
+km.out <- kmeans(XD,4,nstart=20)
+# 
+mydata <- XD
+wss <- (nrow(mydata)-1)*sum(apply(mydata,2,var))
+  for (i in 2:15) wss[i] <- sum(kmeans(mydata,
+                                       centers=i)$withinss)
+plot(1:15, wss, type="b", xlab="Number of Clusters",
+     ylab="Within groups sum of squares")
+XD$cluster <- km.out$cluster
+by(XD[,-45],as.factor(XD[,45]),colMeans)
+```
+

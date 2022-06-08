@@ -1,0 +1,203 @@
+---
+title: "Assignment1"
+author: "Rui"
+date: "2022/2/2"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+AD <- read.csv('Airline Data V2.csv')
+str(AD)
+head(AD)
+```
+```{r}
+df = subset(AD,select = -c(S_CODE,S_CITY,E_CODE,E_CITY))
+df$S_INCOME = as.numeric(gsub("[^0-9]", "", df$S_INCOME))
+df$E_INCOME = as.numeric(gsub("[^0-9]", "", df$E_INCOME))
+df$FARE = as.numeric(gsub("\\$", "", df$FARE))
+
+head(df)
+
+```
+
+
+```{r}
+library(dplyr)
+boxplot(df$DISTANCE~df$SW)
+```
+```{r}
+str(df)
+```
+
+
+```{r}
+library(radiant)
+pivot <- pivotr(df,cvars = "SW", nvar = "FARE",fun = "mean")
+summary(pivot)
+
+```
+```{r}
+pairs(df[,-c(3,4,10,11)], col="blue")
+
+```
+
+
+```{r}
+library(GGally)
+ggpairs(df[,c(1,2,5,6,7,8,9,12,13,14)])
+
+```
+
+```{r}
+str(df$SW)
+```
+
+```{r}
+#with (data = df, plot(df$FARE, df$DISTANCE, col=df$SW, pch=16)) 
+#legend("topright", c("No","Yes"), ) 
+ggplot(df, aes(x=DISTANCE, y=FARE,color= SW ) )+geom_point(size=4,) 
+
+```
+
+
+```{r}
+res <- cor(df[,c(1,2,5,6,7,8,9,12,13,14)])
+res<- round(res, 4)
+res
+```
+
+```{r}
+# part II
+modelA = lm(FARE~COUPON+NEW+factor(VACATION)+     
+              factor(SW)+factor(SLOT)+factor(GATE)+S_INCOME+E_INCOME+
+              HI+S_POP+E_POP+DISTANCE+PAX,
+              data = df)
+summary(modelA)
+
+
+```
+```{r}
+mt <- lm(df$FARE~ df$DISTANCE)
+summary(mt)
+ndata = data.frame(DISTANCE = 300)
+class(df[1,-2])
+df[1,-2]
+predicted1 <- predict(mt,newdata = df[1,-2])
+predicted1
+```
+
+
+
+
+```{r}
+newdt <- data.frame(COUPON = 1, NEW = 3, VACATION = 'No', SW = 'No', HI =6000, S_INCOME = 2000, E_INCOME = 2000, S_POP = 4000000, E_POP=7150000, SLOT='Free', GATE = 'Constrained', DISTANCE = 1000,PAX = 6000) 
+
+
+```
+
+
+```{r}
+predicted <- predict(modelA,newdata = newdt)
+predicted
+```
+
+
+```{r}
+model_simple = lm(df$FARE~factor(df$SW))
+summary(model_simple)
+```
+
+
+```{r}
+model_simple_trans = lm(df$FARE~factor(df$SW)+factor(df$VACATION))
+summary(model_simple_trans)
+
+```
+
+```{r}
+# part IV
+modelB = lm(df$FARE~df$NEW+factor(df$VACATION)+
+              factor(df$SW)+factor(df$SLOT)+factor(df$GATE)+df$S_INCOME+df$E_INCOME+
+              df$HI+df$S_POP+df$E_POP+df$DISTANCE+df$PAX,
+              data = df)
+summary(modelB)
+```
+
+```{r}
+set.seed(123)
+#
+# Partition dataset
+train <- sample(nrow(df),0.6*nrow(df))
+dftrain <- df[train,]
+dftest <- df[-train,]
+
+```
+
+
+```{r}
+modelA_fit = lm(df$FARE~df$COUPON+df$NEW+factor(df$VACATION)+     
+              factor(df$SW)+factor(df$SLOT)+factor(df$GATE)+df$S_INCOME+df$E_INCOME+
+              df$HI+df$S_POP+df$E_POP+df$DISTANCE+df$PAX,
+              data = dftrain)
+summary(modelA_fit)
+```
+
+
+```{r}
+# compute RMSE from training data
+e_train <-modelA_fit$residuals
+RMSE_train <- sqrt(mean(e_train^2))
+```
+
+
+```{r}
+#compute AE from testing data
+predicted_A_fit <- predict(modelA_fit,dftest)
+e_test <- (dftest$FARE - predicted_A_fit)
+(AE_test <- mean(e_test,na.rm=T))
+```
+
+
+```{r}
+library(leaps)
+regfit.full=regsubsets(df$FARE~.,df)
+s1 = summary(regfit.full)
+s1
+plot(regfit.full,scale="bic")
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

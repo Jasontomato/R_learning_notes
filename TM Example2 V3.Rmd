@@ -1,0 +1,155 @@
+---
+title: "TM Example"
+author: "Kislaya Prasad"
+date: "April 18, 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r TM Example}
+library('e1071');
+library('SparseM');
+library('tm');
+library(SnowballC);
+
+# LOAD DATA FROM CSV
+# 
+setwd('D:\\R data')
+tweets <- read.csv("twitter-sanders-apple2.csv")
+tweets$text <- as.character(tweets$text)
+# 
+tweetvector <- as.vector(tweets$text);    # Create vector
+tweetsource <- VectorSource(tweetvector); # Create source
+tweetcorpus <- Corpus(tweetsource);       # Create corpus
+#
+# PERFORMING THE VARIOUS TRANSFORMATIONS on "traincorpus" and "testcorpus" DATASETS 
+# SUCH AS TRIM WHITESPACE, REMOVE PUNCTUATION, REMOVE STOPWORDS.
+tweetcorpus <- tm_map(tweetcorpus,content_transformer(stripWhitespace));
+tweetcorpus <- tm_map(tweetcorpus,content_transformer(tolower));
+tweetcorpus <- tm_map(tweetcorpus, content_transformer(removeWords),stopwords("english"));
+tweetcorpus <- tm_map(tweetcorpus,content_transformer(removePunctuation));
+tweetcorpus <- tm_map(tweetcorpus,content_transformer(removeNumbers));
+# 
+# remove anything other than English letters or space
+removeNumPunct <- function(x) gsub("[^[:alpha:][:space:]]*", "", x)
+tweetcorpus <- tm_map(tweetcorpus, content_transformer(removeNumPunct))
+# 
+# remove URLs
+removeURL <- function(x) gsub("http[[:alnum:]]*", "", x)
+tweetcorpus <- tm_map(tweetcorpus, content_transformer(removeURL))
+#
+#
+#
+# +-----------------------------------------------------------------------+
+#  Stemming
+# +-----------------------------------------------------------------------+
+#
+# keep a copy of corpus to use later as a dictionary for stem completion
+CorpusCopy <- tweetcorpus
+# stem words
+tweetcorpus <- tm_map(tweetcorpus, content_transformer(stemDocument))
+inspect(tweetcorpus[11:25])
+#
+# stem completion
+stemCompletion2 <- function(x, dictionary) {
+  x <- unlist(strsplit(as.character(x), " "))
+  # Unexpectedly, stemCompletion completes an empty string to
+  # a word in dictionary. Remove empty string to avoid above issue.
+  x <- x[x != ""]
+  x <- stemCompletion(x, dictionary=dictionary)
+  x <- paste(x, sep="", collapse=" ")
+  PlainTextDocument(stripWhitespace(x))
+}
+
+tweetcorpus <- lapply(tweetcorpus, stemCompletion2, dictionary=CorpusCopy)
+temp <- as.matrix(lapply(tweetcorpus, `[[`, 1))
+temp <- data.frame(temp)
+tweetcorpus <- Corpus(VectorSource(temp$temp))
+
+## +-------------------------------------------------------------------------+
+
+# Create TermDocumentMatrix
+tdm1 <- TermDocumentMatrix(tweetcorpus)
+tdm1 = removeSparseTerms(tdm1, 0.95)
+#
+## CREATE DOCUMENT TERM MATRIX
+dtm_matrix <- t(tdm1);
+dtm_df <- data.frame(tweets$class,as.matrix(dtm_matrix))
+#
+set.seed(123)
+inTrain <- sample(nrow(dtm_df),0.7*nrow(dtm_df))
+traindata <- dtm_df[inTrain,]
+testdata <- dtm_df[-inTrain,]
+
+## +----------------------------------------------------------------------------------------------+
+#
+# TRAIN NAIVE BAYES MODEL
+model <- naiveBayes(traindata[,-1],traindata[,1]);
+
+# PREDICTION
+Predictions <- predict(model,testdata[,-1])
+(confusion = table(testdata[,1],Predictions))
+#
+## In principle we can run any of the data mining methods you are familiar with
+#
+# TRAIN LOGISTIC REGRESSION MODEL
+
+model2 <- glm(factor(tweets.class)~., data=traindata, family="binomial")
+summary(model2)
+#
+Actual <- testdata[,1]
+predicted.probability <- predict(model2, type = "response", newdata=testdata[,-1]) 
+## Note the predictions are probabilities
+cutoff <- 0.5
+Predicted <- ifelse(predicted.probability > cutoff, "Pos","Neg")
+# 
+(confusion <- table(Actual,Predicted))
+## +---------------------------------------------------------------------------------------------+
+#
+# inspect frequent words
+(freq.terms <- findFreqTerms(tdm1, lowfreq = 15))
+#
+term.freq <- rowSums(as.matrix(tdm1))
+term.freq <- subset(term.freq, term.freq >= 15)
+df2 <- data.frame(term = names(term.freq), freq = term.freq)
+library(ggplot2)
+ggplot(df2, aes(x = term, y = freq)) + geom_bar(stat = "identity") +
+  xlab("Terms") + ylab("Count") + coord_flip()
+#
+## which words are associated with 'apple'?
+findAssocs(tdm1, "apple", 0.05)
+# which words are associated with 'ios'?
+findAssocs(tdm1, "ios", 0.05)
+#
+#
+## Word Cloud
+library(wordcloud)
+library(RColorBrewer)
+m <- as.matrix(tdm1)
+# calculate the frequency of words and sort it by frequency
+word.freq <- sort(rowSums(m), decreasing = T)
+# colors
+pal <- brewer.pal(9, "BuGn")
+pal <- pal[-(1:4)]
+#
+# plot word cloud
+wordcloud(words = names(word.freq), freq = word.freq, min.freq = 1,
+          random.order = F, colors = pal)
+#
+## hclust ####
+matrix1 <- as.matrix(tdm1)
+distMatrix <- dist(scale(matrix1))
+fit <- hclust(distMatrix, method="ward.D2")
+
+# plot dendrogram ####
+plot(fit, cex=0.9, hang=-1,
+     main="Word Cluster Dendrogram")
+# cut tree
+rect.hclust(fit, k=5)
+(groups <- cutree(fit, k=5))
+
+```
+

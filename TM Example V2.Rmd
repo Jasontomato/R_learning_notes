@@ -1,0 +1,59 @@
+---
+title: "TM Example"
+author: "Kislaya Prasad"
+date: "April 18, 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r TM Example}
+library('e1071');
+library('SparseM');
+library('tm');
+
+# LOAD DATA FROM CSV
+df <- read.csv("Tweets_Subset.csv");
+df$text <- as.character(df$text)
+
+# SEPARATE TEXT VECTOR TO CREATE Source(),
+# Corpus() CONSTRUCTOR FOR DOCUMENT TERM
+# MATRIX TAKES Source()
+dfvector <- as.vector(df$text);
+
+# CREATE SOURCE FOR VECTORS
+dfsource <- VectorSource(dfvector);
+
+# CREATE CORPUS FOR DATA
+dfcorpus <- Corpus(dfsource);
+
+# PERFORMING THE VARIOUS TRANSFORMATIONS on "traincorpus" and "testcorpus" DATASETS 
+# SUCH AS TRIM WHITESPACE, REMOVE PUNCTUATION, REMOVE STOPWORDS.
+dfcorpus <- tm_map(dfcorpus,content_transformer(stripWhitespace)); # only leave one space
+dfcorpus <- tm_map(dfcorpus,content_transformer(tolower));
+dfcorpus <- tm_map(dfcorpus, content_transformer(removeWords),stopwords("english"));
+dfcorpus <- tm_map(dfcorpus,content_transformer(removePunctuation));
+dfcorpus <- tm_map(dfcorpus,content_transformer(removeNumbers));
+# 
+tdm1 <- TermDocumentMatrix(dfcorpus)
+tdm1 = removeSparseTerms(tdm1, 0.95)
+# CREATE TERM DOCUMENT MATRIX
+dfmatrix <- t(tdm1);
+
+# TRAIN NAIVE BAYES MODEL
+df2 <- data.frame(as.matrix(dfmatrix))
+# 
+traindata = df2[1:14,]
+testdata  = df2[15:20,]
+trainlabel = df[1:14,1]
+testlabel  = df[15:20,1]
+model <- naiveBayes(traindata,trainlabel);
+
+# PREDICTION
+Predictions <- predict(model,testdata)
+table(testlabel,Predictions)
+
+```
+
